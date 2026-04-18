@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "NVIDIA DLI KPI Accelerator",
+  "version": "1.0",
+  "description": "自動化 NVIDIA DLI 課程進度測試工具 (專為資安工程師測試 API 交互設計)",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://learn.nvidia.com/*",
+    "https://learn.learn.nvidia.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://learn.nvidia.com/courses/course*"],
+      "js": ["content.js"]
+    }
+  ]
+}
