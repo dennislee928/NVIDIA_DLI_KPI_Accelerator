@@ -3,24 +3,67 @@
 <head>
   <meta charset="utf-8">
   <style>
-    body { width: 220px; font-family: sans-serif; padding: 15px; background: #222; color: #fff; }
-    h3 { margin-top: 0; color: #76b900; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+    body { width: 280px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 15px; background: #1a1a1a; color: #eee; }
+    h3 { margin-top: 0; color: #76b900; font-size: 18px; border-bottom: 1px solid #333; padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+    .status-badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: #333; color: #aaa; }
+    .status-badge.active { background: #76b900; color: #000; }
+    
+    .control-panel { margin: 15px 0; }
     button { 
       width: 100%; padding: 12px; background: #76b900; color: white; border: none; 
       border-radius: 4px; cursor: pointer; font-weight: bold; margin-bottom: 10px;
+      transition: background 0.2s;
     }
     button:hover { background: #5d9300; }
-    .note { font-size: 11px; color: #aaa; line-height: 1.4; }
+    button:disabled { background: #444; cursor: not-allowed; }
+    button#stopBtn { background: #cc0000; display: none; }
+    button#stopBtn:hover { background: #aa0000; }
+
+    .progress-container { display: none; margin-top: 15px; }
+    .progress-bar { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+    .progress-fill { width: 0%; height: 100%; background: #76b900; transition: width 0.3s; }
+    .progress-text { font-size: 12px; display: flex; justify-content: space-between; color: #bbb; }
+
+    #log { 
+      margin-top: 15px; max-height: 100px; overflow-y: auto; font-size: 11px; 
+      background: #000; padding: 8px; border-radius: 4px; color: #0f0; font-family: monospace;
+      display: none;
+    }
+    
+    .note { font-size: 11px; color: #888; line-height: 1.4; border-top: 1px solid #333; pt: 10px; margin-top: 15px; }
+    .footer { margin-top: 10px; font-size: 10px; text-align: right; color: #555; }
   </style>
 </head>
 <body>
-  <h3>DLI KPI Accelerator</h3>
-  <button id="startBtn">開始自動化流程</button>
+  <h3>
+    DLI Accelerator
+    <span id="statusBadge" class="status-badge">Ready</span>
+  </h3>
+  
+  <div class="control-panel">
+    <button id="startBtn">開始自動化流程</button>
+    <button id="stopBtn">停止流程</button>
+  </div>
+
+  <div id="progressContainer" class="progress-container">
+    <div class="progress-bar">
+      <div id="progressFill" class="progress-fill"></div>
+    </div>
+    <div class="progress-text">
+      <span id="progressLabel">準備中...</span>
+      <span id="progressPercent">0%</span>
+    </div>
+  </div>
+
+  <div id="log"></div>
+
   <div class="note">
     * 專為資安工程師設計之 API 交互測試工具。<br>
-    * 請確保當前頁面為 NVIDIA DLI 課程內頁。<br>
-    * 腳本包含隨機延遲以模擬人類行為。
+    * 支援 HTML 與 Video 節點自動標記。<br>
+    * 包含 5~12 秒隨機延遲模擬。
   </div>
+  <div class="footer">v1.1 | Security Research Tool</div>
+
   <script src="popup.js"></script>
 </body>
 </html>

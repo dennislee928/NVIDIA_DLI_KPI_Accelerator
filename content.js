@@ -1,16 +1,32 @@
-
 const API_CONFIG = {
   COMPLETION_BASE: 'https://learn.learn.nvidia.com/api/ibl/completion/course_outline/'
 };
 
-// 提取 Cookie
+// 狀態追蹤
+let state = {
+  isRunning: false,
+  total: 0,
+  current: 0,
+  shouldStop: false
+};
+
+function sendStatusUpdate(log = null, logType = 'info') {
+  chrome.runtime.sendMessage({
+    action: "UPDATE_PROGRESS",
+    state: state,
+    log: log,
+    logType: logType
+  }).catch(() => {
+    // 忽略 Popup 關閉導致的錯誤
+  });
+}
+
 function getCookie(name) {
   let value = "; " + document.cookie;
   let parts = value.split("; " + name + "=");
   if (parts.length === 2) return parts.pop().split(";").shift();
 }
 
-// 遞歸展開所有未完成節點
 function flattenBlocks(children, list = []) {
   children.forEach(child => {
     if ((child.type === 'html' || child.type === 'video') && child.completion < 1.0) {
@@ -21,55 +37,96 @@ function flattenBlocks(children, list = []) {
   return list;
 }
 
-// 執行爆破邏輯
 async function startAutomation() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const courseId = urlParams.get('course_id');
+  if (state.isRunning) return;
+  
+  // 修正：直接從 URL 提取 course_id 以避免 '+' 被轉為空格
+  const courseIdMatch = window.location.search.match(/[?&]course_id=([^&]+)/);
+  const courseId = courseIdMatch ? decodeURIComponent(courseIdMatch[1]) : null;
+  // 如果解碼後還是有空格，嘗試將其轉回 '+' (DLI ID 慣例)
+  const normalizedCourseId = courseId ? courseId.replace(/\s/g, '+') : null;
+  
   const csrf = getCookie('csrftoken');
 
-  if (!courseId || !csrf) {
-    console.error('❌ 無法獲取 Course ID 或 CSRF Token');
+  if (!normalizedCourseId || !csrf) {
+    const errorMsg = '❌ 無法獲取 Course ID 或 CSRF Token';
+    console.error(errorMsg);
+    sendStatusUpdate(errorMsg, 'error');
     return;
   }
 
-  console.log(`🔍 正在掃描課程: ${courseId}`);
+  state.isRunning = true;
+  state.shouldStop = false;
+  state.current = 0;
+  sendStatusUpdate(`🔍 掃描課程: ${normalizedCourseId}`);
   
   try {
-    const response = await fetch(`${API_CONFIG.COMPLETION_BASE}${courseId}`);
+    // 優先嘗試 learn.learn.nvidia.com，若失敗可考慮動態調整
+    const response = await fetch(`${API_CONFIG.COMPLETION_BASE}${normalizedCourseId}`);
+    if (!response.ok) throw new Error(`無法讀取課程大綱 (Status: ${response.status})`);
+    
     const data = await response.json();
     const incompleteBlocks = flattenBlocks(data.children);
 
-    console.log(`📊 發現 ${incompleteBlocks.length} 個待處理節點`);
+    state.total = incompleteBlocks.length;
+    if (state.total === 0) {
+      state.isRunning = false;
+      sendStatusUpdate('✅ 沒有發現未完成的節點', 'success');
+      return;
+    }
+
+    sendStatusUpdate(`📊 發現 ${state.total} 個待處理節點`);
 
     for (const block of incompleteBlocks) {
-      console.log(`⏳ 正在處理 [${block.type}] ${block.name}...`);
+      if (state.shouldStop) {
+        sendStatusUpdate('🛑 流程已由使用者停止', 'error');
+        break;
+      }
+
+      state.current++;
+      sendStatusUpdate(`⏳ 正在處理: ${block.name}`);
       
-      // 隨機延遲 5~12 秒，模擬人類行為以避開簡單的流量監控
+      // 隨機延遲 5~12 秒
       const jitter = Math.floor(Math.random() * 7000) + 5000;
       await new Promise(r => setTimeout(r, jitter));
 
-      const targetUrl = `https://learn.learn.nvidia.com/courses/${courseId}/xblock/${block.id}/handler/publish_completion`;
-      
-      const res = await fetch(targetUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf,
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: JSON.stringify({ "completion": 1.0 })
-      });
+      if (state.shouldStop) {
+        sendStatusUpdate('🛑 流程已於延遲中停止', 'error');
+        break;
+      }
 
-      if (res.ok) {
-        console.log(`✅ 已完成: ${block.name}`);
-      } else {
-        console.warn(`⚠️ 節點 ${block.name} 回傳狀態碼: ${res.status}`);
+      const targetUrl = `https://learn.learn.nvidia.com/courses/${normalizedCourseId}/xblock/${block.id}/handler/publish_completion`;
+      
+      try {
+        const res = await fetch(targetUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({ "completion": 1.0 })
+        });
+
+        if (res.ok) {
+          sendStatusUpdate(`✅ 完成: ${block.name}`, 'success');
+        } else {
+          sendStatusUpdate(`⚠️ 失敗: ${block.name} (${res.status})`, 'error');
+        }
+      } catch (postErr) {
+        sendStatusUpdate(`❌ 請求錯誤: ${block.name}`, 'error');
       }
     }
-    console.log('🏁 所有節點處理完畢！');
-    alert('自動化流程結束，請重新整理頁面查看結果。');
+    
+    state.isRunning = false;
+    if (!state.shouldStop) {
+      sendStatusUpdate('🏁 所有節點處理完畢！', 'success');
+      alert('自動化流程結束，請重新整理頁面查看結果。');
+    }
   } catch (err) {
-    console.error('🔥 執行過程中發生錯誤:', err);
+    state.isRunning = false;
+    console.error('🔥 發生錯誤:', err);
+    sendStatusUpdate(`🔥 錯誤: ${err.message}`, 'error');
   }
 }
 
@@ -78,5 +135,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "RUN_ACCELERATOR") {
     startAutomation();
     sendResponse({status: "started"});
+  } else if (request.action === "STOP_ACCELERATOR") {
+    state.shouldStop = true;
+    sendResponse({status: "stopping"});
+  } else if (request.action === "GET_STATUS") {
+    sendResponse(state);
   }
+  return true;
 });
