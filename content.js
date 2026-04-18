@@ -61,8 +61,16 @@ async function startAutomation() {
   sendStatusUpdate(`🔍 掃描課程: ${normalizedCourseId}`);
   
   try {
-    // 優先嘗試 learn.learn.nvidia.com，若失敗可考慮動態調整
-    const response = await fetch(`${API_CONFIG.COMPLETION_BASE}${normalizedCourseId}`);
+    // 修正：包含 course_id query parameter 並加入 CSRF Token 以解決 401
+    const apiUrl = `${API_CONFIG.COMPLETION_BASE}${normalizedCourseId}?course_id=${encodeURIComponent(normalizedCourseId)}`;
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'X-CSRFToken': csrf,
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    });
+    
     if (!response.ok) throw new Error(`無法讀取課程大綱 (Status: ${response.status})`);
     
     const data = await response.json();
@@ -95,7 +103,7 @@ async function startAutomation() {
         break;
       }
 
-      const targetUrl = `https://learn.learn.nvidia.com/courses/${normalizedCourseId}/xblock/${block.id}/handler/publish_completion`;
+      const targetUrl = `https://learn.learn.nvidia.com/courses/${normalizedCourseId}/xblock/${block.id}/handler/publish_completion?course_id=${encodeURIComponent(normalizedCourseId)}`;
       
       try {
         const res = await fetch(targetUrl, {
