@@ -61,17 +61,24 @@ async function startAutomation() {
   sendStatusUpdate(`🔍 掃描課程: ${normalizedCourseId}`);
   
   try {
-    // 修正：包含 course_id query parameter 並加入 CSRF Token 以解決 401
+    // 修正：包含 course_id query parameter 並加入 CSRF Token 與 credentials 以解決 401
     const apiUrl = `${API_CONFIG.COMPLETION_BASE}${normalizedCourseId}?course_id=${encodeURIComponent(normalizedCourseId)}`;
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
         'X-CSRFToken': csrf,
-        'X-Requested-With': 'XMLHttpRequest'
-      }
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json, text/plain, */*'
+      },
+      credentials: 'include' // 重要：跨網域 (subdomain) 傳遞 Session Cookie
     });
-    
+
+    if (response.status === 401) {
+      throw new Error("401 Unauthorized: 請檢查是否已登入 NVIDIA DLI 且 Session 有效");
+    }
+
     if (!response.ok) throw new Error(`無法讀取課程大綱 (Status: ${response.status})`);
+
     
     const data = await response.json();
     const incompleteBlocks = flattenBlocks(data.children);
@@ -113,6 +120,7 @@ async function startAutomation() {
             'X-CSRFToken': csrf,
             'X-Requested-With': 'XMLHttpRequest'
           },
+          credentials: 'include',
           body: JSON.stringify({ "completion": 1.0 })
         });
 
