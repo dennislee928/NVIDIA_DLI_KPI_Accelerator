@@ -5,7 +5,7 @@ if (window.__csuLoaded) {
 window.__csuLoaded = true;
 
 const CS_STORAGE_KEY = 'csu_automation_running';
-const CONTINUE_WAIT_MS = 2500;
+const CONTINUE_WAIT_MS = 1000;
 const IS_TOP = window === window.top;
 
 const CONTINUE_SELECTORS = [
