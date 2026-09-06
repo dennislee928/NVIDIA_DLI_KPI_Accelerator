@@ -1,6 +1,16 @@
-# NVIDIA DLI KPI Accelerator (v1.1)
+# NVIDIA DLI KPI Accelerator (v1.4)
 
 Chrome 擴充功能（Manifest V3），用於在 NVIDIA DLI 課程頁面自動掃描未完成節點並透過 API 完成標記。**專為資安／API 交互測試情境設計**。
+
+## 🆕 v1.4：AttackIQ Academy 模組
+
+- 支援 `https://www.academy.attackiq.com/*`（任意子頁）。
+- 開啟擴充功能並按下開始後，自動執行：
+  1. 點擊影片播放鍵（含 iframe 內播放器，自動靜音播放）。
+  2. 等待課程倒數計時歸零（`00:00`）。
+  3. 等 **1.5 秒** → 點擊 **COMPLETE**。
+  4. 等 **2 秒** → 點擊 **NEXT LESSON**。
+  5. 重複以上流程，直到遇到 **Lab Exercise** 課程自動停止。
 
 ## 🚀 v1.1 更新亮點
 
@@ -34,9 +44,12 @@ Chrome 擴充功能（Manifest V3），用於在 NVIDIA DLI 課程頁面自動�
 
 | 檔案 | 說明 |
 |------|------|
-| `manifest.json` | 擴充功能設定 (v1.1) |
-| `popup.html` / `popup.js` | 進化版 UI：含進度條、日誌與控制邏輯 |
-| `content.js` | 核心邏輯：狀態追蹤、API 交互、延遲控制 |
+| `manifest.json` | 擴充功能設定 (v1.4) |
+| `popup.html` / `popup.js` | 進化版 UI：含進度條、日誌與控制邏輯（DLI / CSU / AIQ 三模式） |
+| `content.js` | NVIDIA DLI 核心邏輯：狀態追蹤、API 交互、延遲控制 |
+| `content-crowdstrike.js` | CrowdStrike University：Continue 按鈕自動化 |
+| `content-attackiq.js` | AttackIQ Academy：播放 → 倒數 → Complete → Next Lesson 迴圈 |
+| `background.js` | 跨 frame 廣播與 MAIN world 操作（Continue 點擊、影片播放） |
 | `icons/` | 擴充功能圖示資源 |
 
 ## 免責與合規

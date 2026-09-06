@@ -134,7 +134,69 @@ async function mainWorldScrollAll(tabId) {
   }
 }
 
+/** AttackIQ Academy：在所有 frame（MAIN world）播放影片 / 點擊播放鍵 */
+async function mainWorldPlayVideo(tabId) {
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId, allFrames: true },
+      world: 'MAIN',
+      func: () => {
+        let videos = 0;
+        let played = false;
+
+        document.querySelectorAll('video').forEach((v) => {
+          videos++;
+          try {
+            v.muted = true;
+            if (v.paused) {
+              const p = v.play();
+              if (p && p.catch) p.catch(() => {});
+            }
+            played = true;
+          } catch {}
+        });
+
+        // 若沒有直接可控的 video，嘗試點擊播放按鈕（避免點到暫停鍵）
+        if (!played) {
+          const selectors = [
+            '.vjs-big-play-button',
+            '.jw-display-icon-container',
+            '.plyr__control--overlaid',
+            'button[aria-label*="play" i]:not([aria-label*="pause" i])',
+            'button[title*="play" i]:not([title*="pause" i])'
+          ];
+          for (const sel of selectors) {
+            const el = document.querySelector(sel);
+            if (el) {
+              const rect = el.getBoundingClientRect();
+              if (rect.width > 0 && rect.height > 0) {
+                el.click();
+                played = true;
+                break;
+              }
+            }
+          }
+        }
+
+        return { played, videos, href: location.href };
+      }
+    });
+
+    const outcomes = (results || []).map((r) => r.result).filter(Boolean);
+    const hit = outcomes.find((r) => r.played);
+    if (hit) return hit;
+    return { played: false, debug: outcomes.map((o) => `${o.href}: videos=${o.videos}`).join(' | ') };
+  } catch (err) {
+    return { played: false, error: String(err) };
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'AIQ_PLAY_VIDEO' && sender.tab?.id != null) {
+    mainWorldPlayVideo(sender.tab.id).then(sendResponse);
+    return true;
+  }
+
   if (message.action === 'CSU_BROADCAST' && message.tabId != null) {
     broadcastToAllFrames(message.tabId, message.payload).then(sendResponse);
     return true;
