@@ -91,6 +91,26 @@ function clickElement(el) {
 function getSectionLinks() {
   const links = [];
   const seen = new Set();
+  const addLink = (a, hash) => {
+    if (!hash || hash === '#') return;
+    if (!isVisible(a)) return;
+    const text = normalizeText(a) || String(a.getAttribute('title') || '').trim().toLowerCase() || hash;
+    if (seen.has(hash)) return;
+    seen.add(hash);
+    links.push({ el: a, hash, text });
+  };
+
+  // Snyk Learn TOC：<a class="tableOfContents__row-title" href="/lesson/xxx/#step-<uuid>">
+  document.querySelectorAll('a[href*="#step-"], a.tableOfContents__row-title').forEach((a) => {
+    try {
+      const u = new URL(a.getAttribute('href') || '', location.href);
+      if (u.hash) addLink(a, u.hash);
+    } catch {}
+  });
+  if (links.length) return links;
+
+  // 通用 fallback：同頁 anchor（pathname 忽略尾斜線差異）
+  const normPath = (p) => (p || '').replace(/\/+$/, '');
   document.querySelectorAll('a[href]').forEach((a) => {
     const href = a.getAttribute('href') || '';
     let hash = null;
@@ -99,26 +119,48 @@ function getSectionLinks() {
     } else {
       try {
         const u = new URL(href, location.href);
-        if (u.origin === location.origin && u.pathname === location.pathname && u.hash) {
+        if (u.origin === location.origin && normPath(u.pathname) === normPath(location.pathname) && u.hash) {
           hash = u.hash;
         }
       } catch {}
     }
-    if (!hash || hash === '#') return;
-    if (!isVisible(a)) return;
-    const text = normalizeText(a);
-    if (!text) return;
-    if (seen.has(hash)) return;
-    seen.add(hash);
-    links.push({ el: a, hash, text });
+    if (hash) addLink(a, hash);
   });
   return links;
+}
+
+/** 在 section 內由上往下漸進捲動並停留，觸發閱讀時間 / 已讀標記 */
+async function dwellInSection(hash, dwellMs) {
+  const id = (hash || '').replace(/^#/, '');
+  const sectionEl = id ? document.getElementById(id) : null;
+  const steps = 5;
+  const stepMs = Math.floor(dwellMs / steps);
+
+  for (let i = 0; i < steps; i++) {
+    if (state.shouldStop) return false;
+    try {
+      if (sectionEl) {
+        const rect = sectionEl.getBoundingClientRect();
+        const absTop = window.scrollY + rect.top;
+        const maxTarget = absTop + Math.max(rect.height - window.innerHeight * 0.5, 0);
+        const target = Math.min(absTop + (rect.height * i) / steps, maxTarget);
+        window.scrollTo({ top: Math.max(target, 0), behavior: 'smooth' });
+      } else {
+        window.scrollBy({ top: i % 2 ? -60 : 60, behavior: 'smooth' });
+      }
+      window.dispatchEvent(new Event('scroll'));
+      document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+    } catch {}
+    if (!(await sleep(stepMs))) return false;
+  }
+  return true;
 }
 
 /* ---------- Quiz ---------- */
 
 function getQuizGroups() {
-  const byKey = new Map();
+  const byName = new Map();
+  const byContainer = new Map();
   document.querySelectorAll('input[type="radio"]').forEach((r) => {
     // 樣式化 radio 常會隱藏 input 本身，改以 label / 容器判斷可見性
     const label = r.closest('label') || (r.id ? document.querySelector(`label[for="${CSS.escape(r.id)}"]`) : null);
@@ -127,14 +169,14 @@ function getQuizGroups() {
       r.closest('form, fieldset, [class*="quiz" i], [data-testid*="quiz" i]') ||
       r.closest('section, article') ||
       document.body;
-    const key = r.name ? `name:${r.name}` : `container`;
-    const groupKey = `${key}`;
-    if (!byKey.has(groupKey)) byKey.set(groupKey, { radios: [], labels: [], container });
-    const g = byKey.get(groupKey);
+    const map = r.name ? byName : byContainer;
+    const key = r.name ? r.name : container;
+    if (!map.has(key)) map.set(key, { radios: [], labels: [], container });
+    const g = map.get(key);
     g.radios.push(r);
     g.labels.push(label);
   });
-  return Array.from(byKey.values()).filter((g) => g.radios.length >= 2);
+  return [...byName.values(), ...byContainer.values()].filter((g) => g.radios.length >= 2);
 }
 
 function containerHasCorrect(container) {
@@ -246,12 +288,13 @@ async function runLesson() {
 
     for (let i = 0; i < links.length; i++) {
       if (state.shouldStop) return false;
-      const { el, text } = links[i];
+      const { el, hash, text } = links[i];
       state.current = i + 1;
       state.phase = 'section';
       sendStatusUpdate(`📖 前往 section (${i + 1}/${links.length}): ${text}，停留 10 秒`);
       clickElement(el);
-      if (!(await sleep(SECTION_DWELL_MS))) return false;
+      if (!(await sleep(800))) return false;
+      if (!(await dwellInSection(hash, SECTION_DWELL_MS))) return false;
 
       if (text.includes('quiz')) {
         state.phase = 'quiz';

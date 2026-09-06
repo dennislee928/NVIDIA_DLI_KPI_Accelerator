@@ -105,14 +105,14 @@ function findButton(pred) {
 const findCompleteButton = () => findButton((t) => t === 'complete');
 const findNextLessonButton = () => findButton((t) => t === 'next lesson' || t.startsWith('next lesson'));
 
-/** 是否已到 Lab Exercise（停止條件）：以當前課程標題或 Lab 啟動按鈕判斷，避免側欄清單誤判 */
-function isLabLesson() {
+/** 是否已到 Final Exam（停止條件）：Lab Exercise 與一般課程相同流程，直接照常處理 */
+function isFinalExamLesson() {
   for (const h of document.querySelectorAll('h1, h2')) {
     const t = normalizeText(h);
-    if (/^lab exercise/.test(t)) return true;
+    if (t.includes('final exam')) return true;
   }
-  const labBtn = findButton((t) => /^(start|launch|begin|open)\b.*\blab\b/.test(t) || t === 'lab exercise');
-  return !!labBtn;
+  const examBtn = findButton((t) => /^(start|begin|take|launch)\b.*\bexam\b/.test(t));
+  return !!examBtn;
 }
 
 /** 尋找課程要求的倒數計時（非播放器內的時間） */
@@ -207,8 +207,8 @@ async function runLessonLoop() {
     state.phase = 'scan';
     sendStatusUpdate('🔍 檢查目前課程...');
 
-    if (isLabLesson()) {
-      sendStatusUpdate('🧪 偵測到 Lab Exercise，自動化停止', 'success');
+    if (isFinalExamLesson()) {
+      sendStatusUpdate('🎓 偵測到 Final Exam，自動化停止', 'success');
       return true;
     }
 
