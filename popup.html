@@ -8,11 +8,13 @@
     h3.dli { color: #76b900; }
     h3.csu { color: #fc0; }
     h3.aiq { color: #f60; }
+    h3.snyk { color: #a78bfa; }
 
     .status-badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: #333; color: #aaa; flex-shrink: 0; }
     .status-badge.active { background: #76b900; color: #000; }
     .status-badge.active.csu { background: #fc0; color: #000; }
     .status-badge.active.aiq { background: #f60; color: #000; }
+    .status-badge.active.snyk { background: #a78bfa; color: #000; }
 
     .control-panel { margin: 15px 0; }
     button {
@@ -26,6 +28,8 @@
     #startBtn.csu:hover { background: #db0; }
     #startBtn.aiq { background: #f60; color: #111; }
     #startBtn.aiq:hover { background: #f81; }
+    #startBtn.snyk { background: #7c5cff; color: #fff; }
+    #startBtn.snyk:hover { background: #6a48f0; }
     button:disabled { background: #444 !important; color: #888 !important; cursor: not-allowed; }
     button#stopBtn { background: #cc0000; display: none; }
     button#stopBtn:hover { background: #aa0000; }
@@ -35,6 +39,7 @@
     .progress-fill { width: 0%; height: 100%; background: #76b900; transition: width 0.3s; }
     .progress-fill.csu { background: #fc0; width: 100%; animation: pulse 1.5s ease-in-out infinite; }
     .progress-fill.aiq { background: #f60; width: 100%; animation: pulse 1.5s ease-in-out infinite; }
+    .progress-fill.snyk { background: #a78bfa; }
     @keyframes pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
     .progress-text { font-size: 12px; display: flex; justify-content: space-between; color: #bbb; gap: 8px; }
 
@@ -87,7 +92,12 @@
     * 播放影片 → 等倒數 00:00 → 等 1.5 秒 → Complete。<br>
     * 等 2 秒 → Next Lesson，直到遇到 Lab Exercise 為止。
   </div>
-  <div class="footer">v1.4 | Security Research Tool</div>
+  <div id="noteSnyk" class="note hidden">
+    * Snyk Learn 課程自動化。<br>
+    * 逐 section 前往並停留 10 秒。<br>
+    * Quiz：逐選項 Confirm，直到回應出現 Correct! 為止。
+  </div>
+  <div class="footer">v1.5 | Security Research Tool</div>
 
   <script src="popup.js"></script>
 </body>
