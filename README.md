@@ -1,4 +1,12 @@
-# NVIDIA DLI KPI Accelerator (v1.4)
+# NVIDIA DLI KPI Accelerator (v1.5)
+
+## 🆕 v1.5：Snyk Learn 模組
+
+- 支援 `https://learn.snyk.io/*` 課程頁。
+- 開啟擴充功能並按下開始後，自動執行：
+  1. 讀取課程 section 目錄，逐一前往每個 section 並**停留 10 秒**（記錄閱讀時間）。
+  2. 進入 Quiz 後逐一選擇選項並點擊 **Confirm**。
+  3. 若回應包含 **Correct!** 即停止該題；否則換下一個選項重試，直到答對。
 
 Chrome 擴充功能（Manifest V3），用於在 NVIDIA DLI 課程頁面自動掃描未完成節點並透過 API 完成標記。**專為資安／API 交互測試情境設計**。
 
